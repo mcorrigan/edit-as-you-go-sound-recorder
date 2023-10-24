@@ -302,7 +302,6 @@ class MainWindow(QMainWindow):
             pymixer.music.play()
             self.start_recording()
             print('Session Started')
-            
         
         self.update_controls()
     
