@@ -25,14 +25,11 @@ def resourcePath(relativePath):
 pymixer.init()
 ui_channel = pymixer.Channel(0)
 replay_channel = pymixer.Channel(1)
+record_start_channel = pymixer.Channel(2)
 
 GOOD_TAKE_SND = pymixer.Sound(resourcePath("audio/good.mp3"))
 BAD_TAKE_SND = pymixer.Sound(resourcePath("audio/bad.mp3"))
 SESS_START_SND = pymixer.Sound(resourcePath("audio/session_start.mp3"))
-
-# GOOD_TAKE_SND = resourcePath("audio/good.mp3")
-# BAD_TAKE_SND = resourcePath("audio/bad.mp3")
-# SESS_START_SND = resourcePath("audio/session_start.mp3")
 
 SESS_START_KEY = QtCore.Qt.Key_F10
 GOOD_TAKE_KEY = QtCore.Qt.Key_F11
@@ -172,7 +169,7 @@ class MainWindow(QMainWindow):
         self.finish_good_take_button.pressed.connect(self.finish_good_take)
         self.finish_bad_take_button = QPushButton("Finish Bad Take (F12)")
         self.finish_bad_take_button.pressed.connect(self.finish_bad_take)
-        self.replay_last_take_button = QPushButton("Replay Last Take")
+        self.replay_last_take_button = QPushButton("Replay Last Take (F13)")
         self.replay_last_take_button.pressed.connect(self.replay_last_take)
         
          # Add the buttons to the layout
@@ -334,7 +331,6 @@ class MainWindow(QMainWindow):
             print('Session Ended')
         else:
             self.start_button.setText("End Session")
-            ui_channel.play(SESS_START_SND)
             self.start_recording()
             print('Session Started')
         
@@ -344,6 +340,8 @@ class MainWindow(QMainWindow):
         if not self.selected_directory:
             print("No directory selected for saving recordings.")
             return
+
+        record_start_channel.play(SESS_START_SND)
 
         self.recording_file = wave.open(f"{self.selected_directory}/recording_temp.wav", "wb")
         self.recording_file.setnchannels(self.channels)
