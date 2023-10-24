@@ -30,6 +30,7 @@ record_start_channel = pymixer.Channel(2)
 GOOD_TAKE_SND = pymixer.Sound(resourcePath("audio/good.mp3"))
 BAD_TAKE_SND = pymixer.Sound(resourcePath("audio/bad.mp3"))
 SESS_START_SND = pymixer.Sound(resourcePath("audio/session_start.mp3"))
+SESS_END_SND = pymixer.Sound(resourcePath("audio/session_end.mp3"))
 
 SESS_START_KEY = QtCore.Qt.Key_F10
 GOOD_TAKE_KEY = QtCore.Qt.Key_F11
@@ -302,6 +303,8 @@ class MainWindow(QMainWindow):
             self.stop_recording()
         self.save_recording(True)
         ui_channel.play(GOOD_TAKE_SND)
+        while ui_channel.get_busy():
+            pass
         self.start_recording()
 
     def finish_bad_take(self):
@@ -311,6 +314,8 @@ class MainWindow(QMainWindow):
             self.stop_recording()
         self.save_recording(False)
         ui_channel.play(BAD_TAKE_SND)
+        while ui_channel.get_busy():
+            pass
         self.start_recording()
 
     def replay_take(self):
@@ -324,10 +329,12 @@ class MainWindow(QMainWindow):
         self.replaying = False
 
     def toggle_recording(self):
-        if self.recording:
+        if self.recording or self.replaying:
             self.start_button.setText("Start Session")
             self.stop_recording()
+            self.stop_replaying()
             os.unlink(f"{self.selected_directory}/recording_temp.wav") # delete scraps
+            ui_channel.play(SESS_END_SND)
             print('Session Ended')
         else:
             self.start_button.setText("End Session")
