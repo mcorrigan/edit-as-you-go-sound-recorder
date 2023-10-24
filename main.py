@@ -23,14 +23,21 @@ def resourcePath(relativePath):
     return os.path.join(basePath, relativePath)
 
 pymixer.init()
+ui_channel = pymixer.Channel(0)
+replay_channel = pymixer.Channel(1)
 
-GOOD_TAKE_SND = resourcePath("audio/good.mp3")
-BAD_TAKE_SND = resourcePath("audio/bad.mp3")
-SESS_START_SND = resourcePath("audio/session_start.mp3")
+GOOD_TAKE_SND = pymixer.Sound(resourcePath("audio/good.mp3"))
+BAD_TAKE_SND = pymixer.Sound(resourcePath("audio/bad.mp3"))
+SESS_START_SND = pymixer.Sound(resourcePath("audio/session_start.mp3"))
+
+# GOOD_TAKE_SND = resourcePath("audio/good.mp3")
+# BAD_TAKE_SND = resourcePath("audio/bad.mp3")
+# SESS_START_SND = resourcePath("audio/session_start.mp3")
 
 SESS_START_KEY = QtCore.Qt.Key_F10
 GOOD_TAKE_KEY = QtCore.Qt.Key_F11
 BAD_TAKE_KEY = QtCore.Qt.Key_F12
+REPLAY_TAKE_KEY = QtCore.Qt.Key_F13
 
 DISTORTION_THRESHOLD = 0.8
 
@@ -107,6 +114,7 @@ class MainWindow(QMainWindow):
         self.sample_rate = 96000
         self.channels = 1
         self.recording = False
+        self.replaying = False
         self.selected_directory = QtCore.QStandardPaths.writableLocation(QtCore.QStandardPaths.DesktopLocation)
         self.selected_device_index = None
 
@@ -128,6 +136,7 @@ class MainWindow(QMainWindow):
         self.bad_take_lbl = QLabel(BAD_TAKE_PATH_TXT.format(self.selected_directory))
         self.bad_take_lbl.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         self.bad_take_lbl.setFixedHeight(14)
+        
         
         # Create a QSpacerItem for vertical spacing
         spacer = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
@@ -163,10 +172,13 @@ class MainWindow(QMainWindow):
         self.finish_good_take_button.pressed.connect(self.finish_good_take)
         self.finish_bad_take_button = QPushButton("Finish Bad Take (F12)")
         self.finish_bad_take_button.pressed.connect(self.finish_bad_take)
+        self.replay_last_take_button = QPushButton("Replay Last Take")
+        self.replay_last_take_button.pressed.connect(self.replay_last_take)
         
          # Add the buttons to the layout
         button_layout.addWidget(self.finish_good_take_button)
         button_layout.addWidget(self.finish_bad_take_button)
+        button_layout.addWidget(self.replay_last_take_button)
         
         # layout all UI
         layout = QtWidgets.QVBoxLayout()
@@ -191,25 +203,30 @@ class MainWindow(QMainWindow):
         # Initialize audio processing
         self.start_audio_stream()
         
-        # keyboard shortcuts (connect f18 = start, f19 = good take, f20 = bad take)
+        # keyboard shortcuts
         f10_shortcut = QShortcut(QKeySequence(SESS_START_KEY), self)
         f10_shortcut.activated.connect(self.start_button.click)
         
         f11_shortcut = QShortcut(QKeySequence(GOOD_TAKE_KEY), self)
-        f11_shortcut.activated.connect(self.finish_good_take_button.click) # update this
+        f11_shortcut.activated.connect(self.finish_good_take_button.click)
         
         f12_shortcut = QShortcut(QKeySequence(BAD_TAKE_KEY), self)
-        f12_shortcut.activated.connect(self.finish_bad_take_button.click) # update this
+        f12_shortcut.activated.connect(self.finish_bad_take_button.click)
+        
+        f13_shortcut = QShortcut(QKeySequence(REPLAY_TAKE_KEY), self)
+        f13_shortcut.activated.connect(self.replay_last_take_button.click)
         
         self.populate_audio_input_devices()
         self.update_controls()
     
     def update_controls(self):
-        self.start_button.setEnabled(self.selected_device_index is not None and self.select_audio_device != 0)
-        self.audio_input_combo.setEnabled(not self.recording)
-        self.select_dir_btn.setEnabled(not self.recording)
-        self.finish_good_take_button.setEnabled(self.recording)
-        self.finish_bad_take_button.setEnabled(self.recording)
+        has_device = self.selected_device_index is not None and self.select_audio_device != 0
+        self.start_button.setEnabled(has_device)
+        self.audio_input_combo.setEnabled(not self.recording and not self.replaying)
+        self.select_dir_btn.setEnabled(not self.recording and not self.replaying)
+        self.finish_good_take_button.setEnabled(self.recording or self.replaying)
+        self.finish_bad_take_button.setEnabled(self.recording or self.replaying)
+        self.replay_last_take_button.setEnabled(self.recording)
     
     def update_audio_meter(self, audio_level):
         self.audio_meter.setValue(audio_level)
@@ -277,31 +294,47 @@ class MainWindow(QMainWindow):
             )
             self.stream.start_stream()
 
+    def replay_last_take(self):
+        self.stop_recording()
+        self.replay_take()
+
     def finish_good_take(self):
-        self.stop_recording(True)
-        pymixer.music.load(GOOD_TAKE_SND)
-        pymixer.music.play()
+        if self.replaying:
+            self.stop_replaying()
+        if self.recording:
+            self.stop_recording()
+        self.save_recording(True)
+        ui_channel.play(GOOD_TAKE_SND)
         self.start_recording()
 
     def finish_bad_take(self):
-        self.stop_recording(False)
-        pymixer.music.load(BAD_TAKE_SND)
-        pymixer.music.play()
+        if self.replaying:
+            self.stop_replaying()
+        if self.recording:
+            self.stop_recording()
+        self.save_recording(False)
+        ui_channel.play(BAD_TAKE_SND)
         self.start_recording()
+
+    def replay_take(self):
+        self.replaying = True
+        replay_channel.stop()
+        snd = pymixer.Sound(f"{self.selected_directory}/recording_temp.wav")
+        replay_channel.play(snd, 99)        
+
+    def stop_replaying(self):
+        replay_channel.stop()
+        self.replaying = False
 
     def toggle_recording(self):
         if self.recording:
-            self.recording = False
             self.start_button.setText("Start Session")
-            if hasattr(self, "recording_file"):
-                self.recording_file.close() # close the recording file
-                os.unlink(f"{self.selected_directory}/recording_temp.wav") # delete scraps
+            self.stop_recording()
+            os.unlink(f"{self.selected_directory}/recording_temp.wav") # delete scraps
             print('Session Ended')
         else:
-            self.recording = True
             self.start_button.setText("End Session")
-            pymixer.music.load(SESS_START_SND)
-            pymixer.music.play()
+            ui_channel.play(SESS_START_SND)
             self.start_recording()
             print('Session Started')
         
@@ -317,29 +350,33 @@ class MainWindow(QMainWindow):
         self.recording_file.setsampwidth(2)
         self.recording_file.setframerate(self.sample_rate)
         self.recording_buffer = []
+        self.recording = True
 
-    def stop_recording(self, wasGoodTake):
-        if hasattr(self, "recording_file"):
+    def stop_recording(self):
+        if self.recording and hasattr(self, "recording_file"):
             self.recording_file.writeframes(b''.join(self.recording_buffer))
             self.recording_file.close()
+        
+        self.recording = False
+
+    def save_recording(self, wasGoodTake):
+        # move file to keep or discard based on how we stopped the recording
+        if wasGoodTake:
+            directory_path = f"{self.selected_directory}/{KEEP_DIR}"
+        else:
+            directory_path = f"{self.selected_directory}/{DISCARD_DIR}"
             
-            # move file to keep or discard based on how we stopped the recording
-            if wasGoodTake:
-                directory_path = f"{self.selected_directory}/{KEEP_DIR}"
-            else:
-                directory_path = f"{self.selected_directory}/{DISCARD_DIR}"
-                
-            if not os.path.exists(directory_path):
-                os.makedirs(directory_path)
-            
-            try:
-                current_time_seconds = int(time.time())
-                shutil.move(f"{self.selected_directory}/recording_temp.wav", os.path.join(directory_path, f"track_{current_time_seconds}.wav"))
-                print(f"Moved '{self.selected_directory}/recording_temp.wav' to '{directory_path}'")
-            except FileNotFoundError:
-                print(f"Source file '{self.selected_directory}/recording_temp.wav' not found.")
-            except shutil.Error as e:
-                print(f"Error while moving the file: {e}")
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path)
+        
+        try:
+            current_time_seconds = int(time.time())
+            shutil.move(f"{self.selected_directory}/recording_temp.wav", os.path.join(directory_path, f"track_{current_time_seconds}.wav"))
+            print(f"Moved '{self.selected_directory}/recording_temp.wav' to '{directory_path}'")
+        except FileNotFoundError:
+            print(f"Source file '{self.selected_directory}/recording_temp.wav' not found.")
+        except shutil.Error as e:
+            print(f"Error while moving the file: {e}")
 
     def audio_callback(self, in_data, frame_count, time_info, status):
         if status:
@@ -348,7 +385,6 @@ class MainWindow(QMainWindow):
         audio_data = np.frombuffer(in_data, dtype=np.int16)
         rms = np.sqrt(np.mean(audio_data.astype(np.float32) ** 2))  # Calculate RMS
         audio_level_dB = 20 * math.log10(rms)  # Convert to dB
-        # audio_level = np.max(np.abs(audio_data))  # Calculate the audio level
 
         peak_amplitude = np.max(np.abs(audio_data)) / 32767.0  # Normalize to the range [-1.0, 1.0]
         if peak_amplitude > DISTORTION_THRESHOLD:
