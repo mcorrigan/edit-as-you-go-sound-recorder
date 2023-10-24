@@ -1,7 +1,7 @@
 import shutil
 from PySide6.QtWidgets import QMainWindow, QApplication, QPushButton, QFileDialog, QComboBox, QProgressBar, QLabel, QHBoxLayout
 from PySide6 import QtCore, QtWidgets
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtGui import QKeySequence, QShortcut, QIcon
 
 import sys, os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide' # hide the pygame banner
@@ -37,7 +37,7 @@ DISTORTION_THRESHOLD = 0.8
 KEEP_DIR = "recorder-keep"
 DISCARD_DIR = "recorder-discard"
 
-APP_TITLE = "Simple Edit-as-you-go Sound Recorder"
+APP_TITLE = "Edit-as-you-go Sound Recorder"
 SESSION_DIR_PATH_TXT = "Session Directory: {0}"
 GOOD_TAKE_PATH_TXT = f"    - Good takes: {{0}}/{KEEP_DIR}"
 BAD_TAKE_PATH_TXT = f"    - Bad takes: {{0}}/{DISCARD_DIR}"
@@ -112,6 +112,8 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle(APP_TITLE)
         self.setFixedSize(650, 350)
+        icon = QIcon("icon.png")
+        self.setWindowIcon(icon)
 
         # Create a QPushButton and connect it to the select_directory method
         self.select_dir_btn = QPushButton("Select Directory")

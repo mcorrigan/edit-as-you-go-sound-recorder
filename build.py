@@ -10,7 +10,7 @@ ICON_ICO = "icon.ico"
 if not os.path.isfile(ICON_ICO):
     ICON_IMAGE.resize((32, 32)).save(ICON_ICO)  # Resize and save ico icon
 
-APP_NAME = 'Simple Edit-as-you-go Sound Recorder'
+APP_NAME = 'Edit-as-you-go Sound Recorder'
 
 PyInstaller.__main__.run([
     './main.py',
