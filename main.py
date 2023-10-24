@@ -1,5 +1,5 @@
 import shutil
-from PySide6.QtWidgets import QMainWindow, QApplication, QPushButton, QFileDialog, QComboBox, QProgressBar, QLabel, QHBoxLayout
+from PySide6.QtWidgets import QMainWindow, QApplication, QPushButton, QFileDialog, QComboBox, QProgressBar, QLabel, QHBoxLayout, QVBoxLayout
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QKeySequence, QShortcut, QIcon
 
@@ -139,14 +139,11 @@ class MainWindow(QMainWindow):
         # Create a QSpacerItem for vertical spacing
         spacer = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         
-        # simple quality label
-        label = QLabel("Quality: 96 kHz / 128 kbps | 16 Bit")
-        label.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        
         # Create a QComboBox for audio input devices
         self.audio_input_combo = QComboBox()
         self.audio_input_combo.addItem("None", -1)  # Default item
         self.audio_input_combo.setCurrentIndex(0)  # Set "None" as the initial selection
+        self.audio_input_combo.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         
         # Create a QProgressBar for the audio meter
         self.audio_meter = QProgressBar()
@@ -154,7 +151,20 @@ class MainWindow(QMainWindow):
         self.audio_meter.setRange(49, 85)
         self.audio_meter.setSizeIncrement(1, 1)
         self.audio_meter.setTextVisible(False)
-        self.audio_meter.setOrientation(QtCore.Qt.Horizontal)
+        self.audio_meter.setOrientation(QtCore.Qt.Vertical)
+        self.audio_meter.setFixedSize(20, 60)
+        
+        # simple quality label
+        quality_label = QLabel("Quality: 96 kHz / 128 kbps | 16 Bit")
+        quality_label.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        
+        inputs_left_layout = QVBoxLayout()
+        inputs_left_layout.addWidget(self.audio_input_combo)
+        inputs_left_layout.addWidget(quality_label)
+        
+        inputs_layout = QHBoxLayout()
+        inputs_layout.addLayout(inputs_left_layout, 1)
+        inputs_layout.addWidget(self.audio_meter)
         
         # connect signal to function
         self.audio_level_updated.connect(self.update_audio_meter)
@@ -162,9 +172,6 @@ class MainWindow(QMainWindow):
         # start session button
         self.start_button = QPushButton("Start Session (F10)")
         self.start_button.pressed.connect(self.toggle_recording)
-        
-        # Create a layout for the buttons at the bottom
-        button_layout = QHBoxLayout()
         
         self.finish_good_take_button = QPushButton("Finish Good Take (F11)")
         self.finish_good_take_button.pressed.connect(self.finish_good_take)
@@ -174,6 +181,8 @@ class MainWindow(QMainWindow):
         self.replay_last_take_button.pressed.connect(self.replay_last_take)
         
          # Add the buttons to the layout
+         # Create a layout for the buttons at the bottom
+        button_layout = QHBoxLayout()
         button_layout.addWidget(self.finish_good_take_button)
         button_layout.addWidget(self.finish_bad_take_button)
         button_layout.addWidget(self.replay_last_take_button)
@@ -185,11 +194,10 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.good_take_lbl)
         layout.addWidget(self.bad_take_lbl)
         layout.addItem(spacer) 
-        layout.addWidget(self.audio_input_combo)
-        layout.addWidget(label)
-        layout.addWidget(self.audio_meter)
+        layout.addLayout(inputs_layout)
         layout.addWidget(self.start_button)
         layout.addLayout(button_layout)
+        
         central_widget = QtWidgets.QWidget()
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
@@ -218,7 +226,7 @@ class MainWindow(QMainWindow):
         self.update_controls()
     
     def update_controls(self):
-        has_device = self.selected_device_index is not None and self.select_audio_device != 0
+        has_device = self.selected_device_index is not None and self.selected_device_index > -1
         self.start_button.setEnabled(has_device)
         self.audio_input_combo.setEnabled(not self.recording and not self.replaying)
         self.select_dir_btn.setEnabled(not self.recording and not self.replaying)
@@ -271,8 +279,8 @@ class MainWindow(QMainWindow):
             print('No audio input device selected')
         else:
             print(f"Selected audio input device: {self.audio_input_combo.currentText()}")
-            self.start_audio_stream()
         
+        self.start_audio_stream()
         self.update_controls()
             
     def start_audio_stream(self):
@@ -295,6 +303,7 @@ class MainWindow(QMainWindow):
     def replay_last_take(self):
         self.stop_recording()
         self.replay_take()
+        self.update_controls()
 
     def finish_good_take(self):
         if self.replaying:
@@ -306,6 +315,7 @@ class MainWindow(QMainWindow):
         while ui_channel.get_busy():
             pass
         self.start_recording()
+        self.update_controls()
 
     def finish_bad_take(self):
         if self.replaying:
@@ -317,6 +327,7 @@ class MainWindow(QMainWindow):
         while ui_channel.get_busy():
             pass
         self.start_recording()
+        self.update_controls()
 
     def replay_take(self):
         self.replaying = True
