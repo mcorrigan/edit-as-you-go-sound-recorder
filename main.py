@@ -133,7 +133,7 @@ class MainWindow(QMainWindow):
         spacer = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         
         # simple quality label
-        label = QLabel("Quality: 48 kHz / 128 kbps | 24 Bits")
+        label = QLabel("Quality: 96 kHz / 128 kbps | 16 Bit")
         label.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         
         # Create a QComboBox for audio input devices
