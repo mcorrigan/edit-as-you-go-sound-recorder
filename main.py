@@ -1,5 +1,5 @@
 import shutil
-from PySide6.QtWidgets import QMainWindow, QApplication, QPushButton, QFileDialog, QComboBox, QProgressBar, QLabel, QHBoxLayout, QVBoxLayout
+from PySide6.QtWidgets import QMainWindow, QApplication, QPushButton, QFileDialog, QComboBox, QProgressBar, QLabel, QHBoxLayout, QVBoxLayout, QMessageBox
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QKeySequence, QShortcut, QIcon
 
@@ -225,6 +225,14 @@ class MainWindow(QMainWindow):
         self.populate_audio_input_devices()
         self.update_controls()
     
+    def display_message(self, title, msg):
+        message_box = QMessageBox()
+        message_box.setWindowTitle(title)
+        message_box.setText(msg)
+        message_box.setIcon(QMessageBox.Information)
+        message_box.setStandardButtons(QMessageBox.Ok)
+        message_box.exec()
+    
     def update_controls(self):
         has_device = self.selected_device_index is not None and self.selected_device_index > -1
         self.start_button.setEnabled(has_device)
@@ -238,7 +246,17 @@ class MainWindow(QMainWindow):
         self.audio_meter.setValue(audio_level)
     
     def select_directory(self):
-        self.selected_directory = QFileDialog.getExistingDirectory(self, "Select Directory", self.selected_directory, QFileDialog.ShowDirsOnly)
+        temp_selected_dir = QFileDialog.getExistingDirectory(self, "Select Directory", self.selected_directory, QFileDialog.ShowDirsOnly)
+        if temp_selected_dir == '':
+            return
+        
+        if os.access(temp_selected_dir, os.W_OK):
+            self.selected_directory = temp_selected_dir
+        else:
+            print(f"Write permission error for directory {temp_selected_dir}")
+            self.display_message("Permission Error", f"The application does not have permission to save files in: {temp_selected_dir}. \nPlease choose a new location.")
+            return 
+        
         if self.selected_directory:
             print(f"Selected directory: {self.selected_directory}")
             self.target_dir_lbl.setText(SESSION_DIR_PATH_TXT.format(self.selected_directory))
@@ -270,6 +288,7 @@ class MainWindow(QMainWindow):
             self.audio_input_combo.currentIndexChanged.connect(self.select_audio_device)
         else:
             self.audio_input_combo.addItem("No audio input devices found", -1)
+            self.display_message("No Input Devices Found", "This application requires one or more input devices be available on the machine.")
         
         self.update_controls()
     
@@ -342,6 +361,7 @@ class MainWindow(QMainWindow):
     def toggle_recording(self):
         if self.recording or self.replaying:
             self.start_button.setText("Start Session")
+            self.start_button.setStyleSheet("QPushButton { background-color: #0078D7; border: 1px solid #0078D7; }")
             self.stop_recording()
             self.stop_replaying()
             os.unlink(f"{self.selected_directory}/recording_temp.wav") # delete scraps
@@ -349,6 +369,7 @@ class MainWindow(QMainWindow):
             print('Session Ended')
         else:
             self.start_button.setText("End Session")
+            self.start_button.setStyleSheet("QPushButton { background-color: #D32F2F; border: 1px solid red; }")
             self.start_recording()
             print('Session Started')
         
