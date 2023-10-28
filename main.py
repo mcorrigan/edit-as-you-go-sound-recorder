@@ -108,7 +108,7 @@ class MainWindow(QMainWindow):
 
         self.audio = pyaudio.PyAudio()
         self.stream = None
-        self.bit_depth = pyaudio.paInt16 # might have to update audio_callback if not 16 bit
+        self.bit_depth = pyaudio.paInt32
         self.sample_rate = 96000
         self.channels = 1
         self.recording = False
@@ -155,7 +155,7 @@ class MainWindow(QMainWindow):
         self.audio_meter.setFixedSize(20, 60)
         
         # simple quality label
-        quality_label = QLabel("Quality: 96 kHz / 128 kbps | 16 Bit")
+        quality_label = QLabel("Quality: 96 kHz | 32 Bit")
         quality_label.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         
         inputs_left_layout = QVBoxLayout()
@@ -384,7 +384,7 @@ class MainWindow(QMainWindow):
 
         self.recording_file = wave.open(f"{self.selected_directory}/recording_temp.wav", "wb")
         self.recording_file.setnchannels(self.channels)
-        self.recording_file.setsampwidth(2)
+        self.recording_file.setsampwidth(4) # 4 for 32 bit, 2 for 16 bitdepth
         self.recording_file.setframerate(self.sample_rate)
         self.recording_buffer = []
         self.recording = True
@@ -419,11 +419,11 @@ class MainWindow(QMainWindow):
         if status:
             print("Audio input underflow!") 
 
-        audio_data = np.frombuffer(in_data, dtype=np.int16)
-        rms = np.sqrt(np.mean(audio_data.astype(np.float32) ** 2))  # Calculate RMS
-        audio_level_dB = 20 * math.log10(rms)  # Convert to dB
+        audio_data = np.frombuffer(in_data, dtype=np.int32)
+        rms = np.sqrt(np.mean(np.square(audio_data.astype(np.float64)) / (2 ** 31)))
+        audio_level_dB = 20 * math.log10(rms) # Convert to dB
 
-        peak_amplitude = np.max(np.abs(audio_data)) / 32767.0  # Normalize to the range [-1.0, 1.0]
+        peak_amplitude = np.max(np.abs(audio_data)) / (2 ** 31)  # Normalize to the range [-1.0, 1.0]
         if peak_amplitude > DISTORTION_THRESHOLD:
             print("Audio distortion detected!")
 
