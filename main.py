@@ -225,6 +225,56 @@ class MainWindow(QMainWindow):
         
         self.populate_audio_input_devices()
         self.update_controls()
+        self.handle_any_file_leftovers()
+    
+    def handle_any_file_leftovers(self):
+        file_path = f"{self.selected_directory}/{TEMP_AUDIOFILE_NAME}"
+        if os.path.exists(file_path):
+            # The temporary audio file exists, which could be due to a program crash.
+            # check if file length is zero, if so just delete it
+            if os.path.getsize(file_path) == 0:
+                print("Temporary audio file is empty. Deleting it.")
+                os.remove(file_path)
+            else:
+                # Prompt the user to keep or discard it.
+                response = self.prompt_for_keep_or_discard()
+
+                if response == "keep":
+                    # Move the file to the "keep" directory
+                    self.save_recording(True)
+                elif response == "discard":
+                    # Move the file to the "discard" directory
+                    self.save_recording(False)
+                elif response == 'delete':
+                    # Delete the file completely
+                    os.remove(file_path)
+                else:
+                    # we should not get here...
+                    pass
+    
+    def prompt_for_keep_or_discard(self):
+        # Create a custom QMessageBox with customized button labels.
+        msg_box = QMessageBox()
+        
+        msg_box.setWindowTitle("Temporary Recording File Found")
+        message = f"A temporary audio file was found in '{self.selected_directory}'. Do you want to place it in the keep folder, discard folder, or delete it entirely?"
+        msg_box.setText(message)
+
+        # Create custom buttons with desired labels.
+        keep_button = msg_box.addButton("Keep Folder", QMessageBox.AcceptRole)
+        discard_button = msg_box.addButton("Discard Folder", QMessageBox.DestructiveRole)
+        delete_button = msg_box.addButton("Delete", QMessageBox.ActionRole)
+        
+        msg_box.exec()
+
+        if msg_box.clickedButton() == keep_button:
+            return "keep"
+        elif msg_box.clickedButton() == discard_button:
+            return "discard"
+        elif msg_box.clickedButton() == delete_button:
+            return "delete"
+        else:
+            return "skip"
     
     def display_message(self, title, msg):
         message_box = QMessageBox()
@@ -253,6 +303,7 @@ class MainWindow(QMainWindow):
         
         if os.access(temp_selected_dir, os.W_OK):
             self.selected_directory = temp_selected_dir
+            self.handle_any_file_leftovers()
         else:
             print(f"Write permission error for directory {temp_selected_dir}")
             self.display_message("Permission Error", f"The application does not have permission to save files in: {temp_selected_dir}. \nPlease choose a new location.")
