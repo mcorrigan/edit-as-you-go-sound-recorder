@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QMainWindow, QApplication, QPushButton, QFileDialo
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QKeySequence, QShortcut, QIcon
 
-import sys, os
+import sys, os, ctypes
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide' # hide the pygame banner
 import pyaudio
 import math
@@ -47,6 +47,7 @@ SESSION_DIR_PATH_TXT = "Session Directory: {0}"
 GOOD_TAKE_PATH_TXT = f"    - Good takes: {{0}}/{KEEP_DIR}"
 BAD_TAKE_PATH_TXT = f"    - Bad takes: {{0}}/{DISCARD_DIR}"
 
+TEMP_AUDIOFILE_NAME = '__eaygsr_recording_temp.wav'
 
 
 # style the app, win 10 dark theme
@@ -351,23 +352,28 @@ class MainWindow(QMainWindow):
     def replay_take(self):
         self.replaying = True
         replay_channel.stop()
-        snd = pymixer.Sound(f"{self.selected_directory}/recording_temp.wav")
+        snd = pymixer.Sound(f"{self.selected_directory}/{TEMP_AUDIOFILE_NAME}")
         replay_channel.play(snd, 99)        
 
     def stop_replaying(self):
         replay_channel.stop()
         self.replaying = False
 
+    def end_session(self):
+        self.stop_recording()
+        self.stop_replaying()
+        os.unlink(f"{self.selected_directory}/{TEMP_AUDIOFILE_NAME}") # delete scraps
+        ui_channel.play(SESS_END_SND)
+
     def toggle_recording(self):
         if self.recording or self.replaying:
+            # end the session
             self.start_button.setText("Start Session")
             self.start_button.setStyleSheet("QPushButton { background-color: #0078D7; border: 1px solid #0078D7; }")
-            self.stop_recording()
-            self.stop_replaying()
-            os.unlink(f"{self.selected_directory}/recording_temp.wav") # delete scraps
-            ui_channel.play(SESS_END_SND)
+            self.end_session()
             print('Session Ended')
         else:
+            # start the session
             self.start_button.setText("End Session")
             self.start_button.setStyleSheet("QPushButton { background-color: #D32F2F; border: 1px solid red; }")
             self.start_recording()
@@ -382,12 +388,15 @@ class MainWindow(QMainWindow):
 
         record_start_channel.play(SESS_START_SND)
 
-        self.recording_file = wave.open(f"{self.selected_directory}/recording_temp.wav", "wb")
+        file_path = f"{self.selected_directory}/{TEMP_AUDIOFILE_NAME}"
+        self.recording_file = wave.open(file_path, "wb")
         self.recording_file.setnchannels(self.channels)
-        self.recording_file.setsampwidth(4) # 4 for 32 bit, 2 for 16 bitdepth
+        self.recording_file.setsampwidth(4) # 4 for 32 bit audio
         self.recording_file.setframerate(self.sample_rate)
         self.recording_buffer = []
         self.recording = True
+        
+        self.set_hidden_attribute(file_path)
 
     def stop_recording(self):
         if self.recording and hasattr(self, "recording_file"):
@@ -408,12 +417,16 @@ class MainWindow(QMainWindow):
         
         try:
             current_time_seconds = int(time.time())
-            shutil.move(f"{self.selected_directory}/recording_temp.wav", os.path.join(directory_path, f"track_{current_time_seconds}.wav"))
-            print(f"Moved '{self.selected_directory}/recording_temp.wav' to '{directory_path}'")
+            src_path = f"{self.selected_directory}/{TEMP_AUDIOFILE_NAME}"
+            dest_path = os.path.join(directory_path, f"track_{current_time_seconds}.wav")
+            shutil.move(src_path, dest_path)
+            self.unset_hidden_attribute(dest_path) # make file visible again to the user
+            print(f"Moved '{self.selected_directory}/{TEMP_AUDIOFILE_NAME}' to '{directory_path}'")
         except FileNotFoundError:
-            print(f"Source file '{self.selected_directory}/recording_temp.wav' not found.")
+            print(f"Source file '{self.selected_directory}/{TEMP_AUDIOFILE_NAME}' not found.")
         except shutil.Error as e:
             print(f"Error while moving the file: {e}")
+        
 
     def audio_callback(self, in_data, frame_count, time_info, status):
         if status:
@@ -429,6 +442,12 @@ class MainWindow(QMainWindow):
 
         if self.recording:
             self.recording_buffer.append(in_data)
+            
+            # every 10 MB, flush the buffer to the temp file so we don't lose everything if we crash
+            if len(self.recording_buffer) * len(in_data) >= 10 * 1024 * 1024:
+                print('Flush audio to temp file')
+                self.recording_file.writeframes(b''.join(self.recording_buffer))
+                self.recording_buffer = []
 
         # Update the audio meter
         # print(audio_level_dB)
@@ -436,7 +455,28 @@ class MainWindow(QMainWindow):
         
         return None, pyaudio.paContinue
 
+    def set_hidden_attribute(self, file_path):
+        if os.name == 'nt':
+            # On Windows, set the hidden attribute
+            try:
+                # FILE_ATTRIBUTE_HIDDEN = 2
+                ctypes.windll.kernel32.SetFileAttributesW(file_path, 2)
+            except Exception as e:
+                print(f"Error setting hidden attribute: {e}")
+        else:
+            print("Setting file attributes is not supported on this platform.")
 
+    def unset_hidden_attribute(self, file_path):
+        if os.name == 'nt':
+            # On Windows, remove the hidden attribute
+            try:
+                # FILE_ATTRIBUTE_NORMAL = 128
+                ctypes.windll.kernel32.SetFileAttributesW(file_path, 128)
+            except Exception as e:
+                print(f"Error unsetting hidden attribute: {e}")
+        else:
+            print("Setting file attributes is not supported on this platform.")
+            
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     w = MainWindow()
