@@ -2,6 +2,7 @@ import shutil
 from PySide6.QtWidgets import QMainWindow, QApplication, QPushButton, QFileDialog, QComboBox, QProgressBar, QLabel, QHBoxLayout, QVBoxLayout, QMessageBox
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QKeySequence, QShortcut, QIcon
+from PySide6.QtCore import QTimer, QTime
 
 import sys, os, ctypes
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'hide' # hide the pygame banner
@@ -11,6 +12,8 @@ import time
 import numpy as np
 import wave
 from pygame import mixer as pymixer
+
+VERSION = '0.2.1'
 
 def resourcePath(relativePath):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -135,8 +138,7 @@ class MainWindow(QMainWindow):
         self.bad_take_lbl = QLabel(BAD_TAKE_PATH_TXT.format(self.selected_directory))
         self.bad_take_lbl.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         self.bad_take_lbl.setFixedHeight(14)
-        
-        
+                
         # Create a QSpacerItem for vertical spacing
         spacer = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         
@@ -159,9 +161,18 @@ class MainWindow(QMainWindow):
         quality_label = QLabel("Quality: 96 kHz | 32 Bit")
         quality_label.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         
+        # Create a label to display the session time
+        self.session_time_label = QLabel("Take Duration: 00:00")
+        self.session_time_label.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        
+        # Create a QTimer to update the session time label
+        self.session_timer = QTimer()
+        self.session_timer.timeout.connect(self.update_session_time)
+        
         inputs_left_layout = QVBoxLayout()
         inputs_left_layout.addWidget(self.audio_input_combo)
         inputs_left_layout.addWidget(quality_label)
+        inputs_left_layout.addWidget(self.session_time_label)
         
         inputs_layout = QHBoxLayout()
         inputs_layout.addLayout(inputs_left_layout, 1)
@@ -188,6 +199,14 @@ class MainWindow(QMainWindow):
         button_layout.addWidget(self.finish_bad_take_button)
         button_layout.addWidget(self.replay_last_take_button)
         
+        # version label
+        version_label = QLabel(f"Version: {VERSION}")
+        version_label.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        
+        version_layout = QHBoxLayout()
+        version_layout.addStretch(1)  # Add a stretchable space on the left
+        version_layout.addWidget(version_label)
+        
         # layout all UI
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.select_dir_btn)
@@ -198,6 +217,7 @@ class MainWindow(QMainWindow):
         layout.addLayout(inputs_layout)
         layout.addWidget(self.start_button)
         layout.addLayout(button_layout)
+        layout.addLayout(version_layout)
         
         central_widget = QtWidgets.QWidget()
         central_widget.setLayout(layout)
@@ -211,21 +231,27 @@ class MainWindow(QMainWindow):
         self.start_audio_stream()
         
         # keyboard shortcuts
-        f10_shortcut = QShortcut(QKeySequence(SESS_START_KEY), self)
-        f10_shortcut.activated.connect(self.start_button.click)
+        session_start_key_shortcut = QShortcut(QKeySequence(SESS_START_KEY), self)
+        session_start_key_shortcut.activated.connect(self.start_button.click)
         
-        f11_shortcut = QShortcut(QKeySequence(GOOD_TAKE_KEY), self)
-        f11_shortcut.activated.connect(self.finish_good_take_button.click)
+        goodtake_key_shortcut = QShortcut(QKeySequence(GOOD_TAKE_KEY), self)
+        goodtake_key_shortcut.activated.connect(self.finish_good_take_button.click)
         
-        f12_shortcut = QShortcut(QKeySequence(BAD_TAKE_KEY), self)
-        f12_shortcut.activated.connect(self.finish_bad_take_button.click)
+        badtake_key_shortcut = QShortcut(QKeySequence(BAD_TAKE_KEY), self)
+        badtake_key_shortcut.activated.connect(self.finish_bad_take_button.click)
         
-        f13_shortcut = QShortcut(QKeySequence(REPLAY_TAKE_KEY), self)
-        f13_shortcut.activated.connect(self.replay_last_take_button.click)
+        replay_key_shortcut = QShortcut(QKeySequence(REPLAY_TAKE_KEY), self)
+        replay_key_shortcut.activated.connect(self.replay_last_take_button.click)
         
         self.populate_audio_input_devices()
         self.update_controls()
         self.handle_any_file_leftovers()
+    
+    def update_session_time(self):
+        # Update the session time label with the elapsed time
+        current_time = QTime.currentTime()
+        elapsed_time = self.start_time.msecsTo(current_time)
+        self.session_time_label.setText(f"Take Duration: {elapsed_time // 60000:02d}:{(elapsed_time // 1000) % 60:02d}")
     
     def handle_any_file_leftovers(self):
         file_path = f"{self.selected_directory}/{TEMP_AUDIOFILE_NAME}"
@@ -415,6 +441,7 @@ class MainWindow(QMainWindow):
         self.stop_replaying()
         os.unlink(f"{self.selected_directory}/{TEMP_AUDIOFILE_NAME}") # delete scraps
         ui_channel.play(SESS_END_SND)
+        self.session_time_label.setText(f"Take Duration: 00:00")
 
     def toggle_recording(self):
         if self.recording or self.replaying:
@@ -448,12 +475,16 @@ class MainWindow(QMainWindow):
         self.recording = True
         
         self.set_hidden_attribute(file_path)
+        
+        self.session_timer.start(100)  # Update every 1 second
+        self.start_time = QTime.currentTime()
 
     def stop_recording(self):
         if self.recording and hasattr(self, "recording_file"):
             self.recording_file.writeframes(b''.join(self.recording_buffer))
             self.recording_file.close()
         
+        self.session_timer.stop()
         self.recording = False
 
     def save_recording(self, wasGoodTake):
