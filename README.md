@@ -1,9 +1,14 @@
 ![image](https://github.com/mcorrigan/edit-as-you-go-sound-recorder/assets/1253843/dd02dcbc-b9a6-4181-858e-6c734946e308)
 
 ## Why This Tool?
-Wrote this fairly quickly for a friend who narrates audio books. It takes him a while to record himself and then edit the tracks. He also is not next to hit keyboard when he records.
+Wrote this fairly quickly for my friend, Mason, who narrates awesome audio books. It takes him a lot of work to record himself and then edit the tracks. He also is not next usually next to the keyboard when he records.
 
 This tool allows a person to record themselves in takes, and track all successful takes as they go. All this with audio queues so you don't have to see the screen to record. 
+
+#### Contact Mason Willard - Stage, Film, and Voice Actor
+- Soundcloud: [https://on.soundcloud.com/pw4a3](https://on.soundcloud.com/pw4a3)
+- Youtube: [https://www.youtube.com/@_roscius](https://www.youtube.com/@_roscius)
+- Email: mwillardpro@gmail.com 
 
 ## Audio Format
 96kHz @ 32 Bit
@@ -31,7 +36,6 @@ These can be changed in the code easily enough. The reason behind these was spec
 For quick assembly in Audacity, you can select all your good takes and drag them into a new session. Next, select them all and choose Tracks from the top menu. Then choose Align Tracks -> Align End to End.
 
 ![image](https://github.com/mcorrigan/edit-as-you-go-sound-recorder/assets/1253843/3c645d7e-7419-463c-8d2f-2d872a518758)
-
 
 ## More Help or Desired Changes
 The code is available as is. If you find bugs, please submit them on Github and I will address them as I am able and time permits. In the event you would like bugs fixed sooner, customizations, or personal help setting up and using the program, I'm can be available to help for $150 / hr. Leave an issue with your email to contact me.
