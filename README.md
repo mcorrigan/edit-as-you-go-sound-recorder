@@ -37,5 +37,10 @@ For quick assembly in Audacity, you can select all your good takes and drag them
 
 ![image](https://github.com/mcorrigan/edit-as-you-go-sound-recorder/assets/1253843/3c645d7e-7419-463c-8d2f-2d872a518758)
 
+Also, it may be helpful to turn on ripple edit so as you modify each take, the other audio files don't fall behind. You can enable this by going to Edit -> Preferences and the go to Track Behaviors and check the box "Editing a clip can move other clips"
+
+![image](https://github.com/mcorrigan/edit-as-you-go-sound-recorder/assets/1253843/de18d3b0-2a97-4ef9-98b1-a2fdc017d073)
+
+
 ## More Help or Desired Changes
 The code is available as is. If you find bugs, please submit them on Github and I will address them as I am able and time permits. In the event you would like bugs fixed sooner, customizations, or personal help setting up and using the program, I'm can be available to help for $150 / hr. Leave an issue with your email to contact me.
