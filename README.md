@@ -43,4 +43,4 @@ Also, it may be helpful to turn on ripple edit so as you modify each take, the o
 
 
 ## More Help or Desired Changes
-The code is available as is. If you find bugs, please submit them on Github and I will address them as I am able and time permits. In the event you would like bugs fixed sooner, customizations, or personal help setting up and using the program, I'm can be available to help for $150 / hr. Leave an issue with your email to contact me.
+The code is available as is. If you find bugs, please submit them on Github and I will address them as I am able and time permits. In the event you would like bugs fixed sooner, customizations, or personal help setting up and using the program, I can be available to help for $150 / hr. Leave an issue with your email to contact me.
