@@ -25,7 +25,7 @@ To begin recording, start the session (F10). Once the recording has started it i
 - If you don't like the take, click Finish Bad Take (F12). 
 - If you are not sure about the take, click Replay Last Take and you can listen to the take on repeat, then choose Finish Good Take or Finish Bad Take. 
 
-When you are done with the session, click End Session (F10). The last segment of recording prior to the session ending will be discarded.
+When you are done with the session, click End Session (F10). (The last segment of recording that is not marked good/bad prior to the session ending will be discarded.)
 
 Your good takes will all be in a folder called /recorder-keep and the rejected audio files are in a folder called /recorder-discard. All files have been named using timestamps so they are sortable. The location of these folders can be selected prior to starting a session. 
 
@@ -43,4 +43,4 @@ Also, it may be helpful to turn on ripple edit so as you modify each take, the o
 
 
 ## More Help or Desired Changes
-The code is available as is. If you find bugs, please submit them on Github and I will address them as I am able and time permits. In the event you would like bugs fixed sooner, customizations, or personal help setting up and using the program, I can be available to help for $150 / hr. Leave an issue with your email to contact me.
+The code is available as is. If you find bugs, please submit them on Github and I will address them as I am able and time permits. In the event you would like bugs fixed sooner, customizations, or personal help setting up and using the program, I can be available to help at an hourly rate. Leave an issue with your email to contact me.
